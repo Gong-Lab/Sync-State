@@ -1,0 +1,56 @@
+function [ccg_norm, lags, pk, pkloc]=getCCG_woShfl(event1, event2, tRange2Check, bin_size, max_lag, p_range, plt)
+
+if nargin<7
+    plt=true;
+end
+
+
+event1=event1(event1>=tRange2Check(1) & event1<tRange2Check(2));
+event2=event2(event2>=tRange2Check(1) & event2<tRange2Check(2));
+
+if isempty(event1) || isempty(event2)
+    ccg_norm=[];
+    lags=[];
+    pk=[]; 
+    pkloc=[];
+    return;
+end
+
+%%
+[lags, ccg_norm] = ccg_diffHist(event1, event2, bin_size, max_lag, tRange2Check); %event2-event1
+
+%%
+
+i_p1=dsearchn(lags', -p_range);
+i_p2=dsearchn(lags', p_range);
+[ccgPeak, i_ccgPeak]=max(ccg_norm(i_p1:i_p2));
+
+if i_ccgPeak>i_p1 && i_ccgPeak<i_p2 && ccgPeak>thr_b && ccgPeak>thr_shfl.global(i_ccgPeak)
+    pkloc=lags(i_ccgPeak);
+else
+    pkloc=[];
+end
+
+if plt
+    figure;hold on
+    plot(lags, ccg_norm);
+    plot(lags, thr_shfl.ptwise, 'r--');
+    plot(lags, thr_shfl.global, 'm--');
+    plot([lags(1), lags(end)], [thr_b, thr_b], 'g--');
+    if ~isempty(pkloc)
+        plot(pkloc, ccgPeak, 'rv');
+    end
+
+    plot([-b_range(2), -b_range(2)], [0, max(ccg_norm)], 'k--');
+    plot([-b_range(1), -b_range(1)], [0, max(ccg_norm)], 'k--');
+    plot([b_range(1), b_range(1)], [0, max(ccg_norm)], 'k--');
+    plot([b_range(2), b_range(2)], [0, max(ccg_norm)], 'k--');
+
+    plot([-p_range, -p_range], [0, max(ccg_norm)], 'k--');
+    plot([p_range, p_range], [0, max(ccg_norm)], 'k--');
+    if isempty(pkloc)
+        title('no significant peak');
+    else
+        title(['peak at ', num2str(pkloc, 3)]);
+    end
+end
